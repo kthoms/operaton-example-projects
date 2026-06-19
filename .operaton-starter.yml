@@ -1,0 +1,10 @@
+apiVersion: operaton-starter/v1
+
+repository:
+  name: "Operaton Example Projects"
+  description: "Comprehensive, end-to-end use-case applications built on Operaton — the open-source BPMN process engine."
+  maintainer:
+    name: "Karsten Thoms"
+    url: "https://github.com/kthoms"
+
+examples:
