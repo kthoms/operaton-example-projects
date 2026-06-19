@@ -1,0 +1,24 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres-operaton:5432/operaton
+    username: operaton
+    password: operaton
+    driver-class-name: org.postgresql.Driver
+
+operaton:
+  bpm:
+    authorization:
+      enabled: true
+    history-level: full
+
+plugin.identity.keycloak:
+  keycloakIssuerUrl: http://keycloak:8080/realms/operaton
+  keycloakAdminUrl: http://keycloak:8080/admin/realms/operaton
+  clientId: operaton-identity-service
+  clientSecret: operaton-identity-secret
+  useUsernameAsOperatonUserId: true
+  useGroupPathAsOperatonGroupId: true
+  administratorGroupName: operaton-admin
