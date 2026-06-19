@@ -1,0 +1,77 @@
+version: 2
+updates:
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+    groups:
+      operaton:
+        patterns:
+          - "org.operaton*"
+      spring-boot:
+        patterns:
+          - "org.springframework.boot*"
+      testcontainers:
+        patterns:
+          - "org.testcontainers*"
+      maven-plugins:
+        patterns:
+          - "org.apache.maven.plugins*"
+      misc:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "org.springframework.boot:*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "io.quarkus*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+    groups:
+      operaton:
+        patterns:
+          - "org.operaton*"
+      spring-boot:
+        patterns:
+          - "org.springframework.boot*"
+      testcontainers:
+        patterns:
+          - "org.testcontainers*"
+      maven-plugins:
+        patterns:
+          - "org.apache.maven.plugins*"
+      misc:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "org.springframework.boot:*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "io.quarkus*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: "docker"
+    directories:
+      - "*"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"

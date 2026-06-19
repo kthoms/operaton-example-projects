@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      maven-examples: ${{ steps.discover.outputs.maven }}
+      gradle-examples: ${{ steps.discover.outputs.gradle }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: discover
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            base_ref="origin/${{ github.base_ref }}"
+          else
+            base_ref="origin/main"
+          fi
+
+          # Extract project paths relative to examples/:
+          # - examples/my-project/... -> my-project
+          # - examples/use-cases/leave-request/... -> use-cases/leave-request
+          changed=$(git diff --name-only --diff-filter=d "$base_ref" 2>/dev/null \
+            | grep '^examples/' \
+            | awk -F'/' '{
+                if ($2 == "use-cases" && NF >= 3) print $2"/"$3
+                else if ($2 != "" && $2 != "use-cases") print $2
+              }' \
+            | sort -u | jq -R . | jq -cs . 2>/dev/null || echo "[]")
+
+          # Fall back to all examples when nothing changed (fresh push / workflow change)
+          if [ "$changed" = "[]" ]; then
+            changed=$(find examples -name "mvnw" -mindepth 2 -maxdepth 3 \
+              | sed 's|^examples/||' | sed 's|/mvnw$||' \
+              | sort -u | jq -R . | jq -cs .)
+          fi
+
+          echo "Changed: $changed"
+
+          # Maven: all changed examples (every project has mvnw)
+          maven=$(printf '%s' "$changed")
+          echo "maven=$maven" >> "$GITHUB_OUTPUT"
+          echo "Maven: $maven"
+
+          # Gradle: only whitelisted examples that were changed
+          gradle_whitelist='[]'
+          gradle=$(printf '%s' "$changed" | jq -c \
+            --argjson wl "$gradle_whitelist" \
+            '[.[] | select(. as $e | $wl | any(. == $e))]')
+          echo "gradle=$gradle" >> "$GITHUB_OUTPUT"
+          echo "Gradle: $gradle"
+
+  build-maven:
+    needs: discover
+    if: needs.discover.outputs.maven-examples != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example: ${{ fromJson(needs.discover.outputs.maven-examples) }}
+    name: ${{ matrix.example }} (maven)
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Build and test (Maven)
+        working-directory: examples/${{ matrix.example }}
+        run: ./mvnw -B -ntp verify
+
+  build-gradle:
+    needs: discover
+    if: needs.discover.outputs.gradle-examples != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example: ${{ fromJson(needs.discover.outputs.gradle-examples) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - name: Build and test (Gradle)
+        working-directory: examples/${{ matrix.example }}
+        run: ./gradlew build --no-daemon
