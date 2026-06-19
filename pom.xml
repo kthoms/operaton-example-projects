@@ -11,6 +11,7 @@
   <name>Operaton Example Projects — Aggregator</name>
 
   <modules>
+    <module>examples/loan-platform-sso</module>
   </modules>
 
   <build>
