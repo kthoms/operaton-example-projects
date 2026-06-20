@@ -9,9 +9,10 @@ This section describes the container topology as deployed by
 
 The stack is defined in `docker-compose.yml` and creates an isolated Docker
 bridge network (`loan-platform-sso_default`). All inter-container communication
-uses Docker's internal DNS resolver (`127.0.0.11`). The only externally
-accessible port is **8080** on the Docker host, which maps to nginx's TLS
-listener on port **8443** inside the container.
+uses Docker's internal DNS resolver (`127.0.0.11`). Two host ports are exposed:
+**8080** maps to nginx (application entry point) and **8180** maps directly to
+Keycloak (required so browsers can follow OIDC authorization redirects). TLS is
+opt-in — plain HTTP is the default.
 
 ```
 Docker Host (macOS / Linux)
@@ -25,8 +26,8 @@ Docker Host (macOS / Linux)
 │  │  ┌──────────────────────────────────────────────────────────┐  │
 │  │  │  ENTRY POINT                                              │  │
 │  │  │  nginx:1.27-alpine                 (nginx)               │  │
-│  │  │  - Listens: 8443/tcp (TLS, self-signed cert)             │  │
-│  │  │  - Host port mapping: 8080 → 8443                        │  │
+│  │  │  - Listens: 8080/tcp (HTTP)                              │  │
+│  │  │  - Host port mapping: 8080 → 8080                        │  │
 │  │  │  - Serves: /usr/share/nginx/html (welcome page)          │  │
 │  │  │  - auth_request → oauth2-proxy:4180                      │  │
 │  │  │  - Proxies: /control/ → flowset-control:8081             │  │
@@ -47,8 +48,10 @@ Docker Host (macOS / Linux)
 │  │  ┌───────────────────────────────────────────────────────────┐ │
 │  │  │  IDENTITY PROVIDER                                        │ │
 │  │  │  quay.io/keycloak/keycloak:26.6.3  (keycloak)           │ │
-│  │  │  - Listens: 8080/tcp (HTTP, internal only)               │ │
+│  │  │  - Listens: 8080/tcp (HTTP)                              │ │
+│  │  │  - Host port mapping: 8180 → 8080 (browser OIDC login)  │ │
 │  │  │  - Mode: start-dev                                        │ │
+│  │  │  - KC_HOSTNAME=localhost:8180 (auth redirect URLs)       │ │
 │  │  │  - DB: postgres-keycloak:5432/keycloak                   │ │
 │  │  │  - Theme: /opt/keycloak/themes/operaton (custom)         │ │
 │  │  │  - Realm: operaton (seeded by keycloak-init)             │ │
@@ -95,7 +98,7 @@ Docker Host (macOS / Linux)
 │  │  │  platform: linux/amd64                                    │ │
 │  │  │  - Listens: 8081/tcp (HTTP, internal)                    │ │
 │  │  │  - Auth: OIDC (client: flowset-control)                  │ │
-│  │  │  - Exposed at: https://localhost:8080/control/           │ │
+│  │  │  - Exposed at: http://localhost:8080/control/            │ │
 │  │  │  - DB: postgres-flowset:5432/flowset-control             │ │
 │  │  └───────────────────────────────────────────────────────────┘ │
 │  │                                                                 │
@@ -105,7 +108,7 @@ Docker Host (macOS / Linux)
 │  │  │  platform: linux/amd64                                    │ │
 │  │  │  - Listens: 3000/tcp (HTTP, internal)                    │ │
 │  │  │  - Static SPA; calls /engine-rest via nginx proxy        │ │
-│  │  │  - Exposed at: https://localhost:8080/tasklist/          │ │
+│  │  │  - Exposed at: http://localhost:8080/tasklist/           │ │
 │  │  └───────────────────────────────────────────────────────────┘ │
 │  │                                                                 │
 │  │  ┌──────────────────────────────────────────────────────────┐  │
@@ -126,9 +129,9 @@ Docker Host (macOS / Linux)
 
 | Container            | Image                                        | Port (internal) | Host port | Role                          |
 |----------------------|----------------------------------------------|-----------------|-----------|-------------------------------|
-| `nginx`              | `nginx:1.27-alpine`                          | 8443/tcp (TLS)  | **8080**  | Entry point, TLS termination  |
+| `nginx`              | `nginx:1.27-alpine`                          | 8080/tcp (HTTP) | **8080**  | Entry point                   |
 | `oauth2-proxy`       | `quay.io/oauth2-proxy/oauth2-proxy:v7.15.3`  | 4180/tcp        | —         | OIDC SSO gateway              |
-| `keycloak`           | `quay.io/keycloak/keycloak:26.6.3`           | 8080/tcp        | —         | Identity provider             |
+| `keycloak`           | `quay.io/keycloak/keycloak:26.6.3`           | 8080/tcp        | **8180**  | Identity provider             |
 | `keycloak-init`      | `quay.io/keycloak/keycloak:26.6.3`           | —               | —         | One-shot realm seeder         |
 | `operaton`           | `loan-platform-sso-engine:local`             | 8080/tcp        | —         | BPMN process engine (REST)    |
 | `worker`             | `loan-platform-sso-worker:local`             | —               | —         | External task worker          |
@@ -177,10 +180,13 @@ and run natively.
 
 ## Host Port Mapping
 
-| Host address         | Protocol | Maps to                    |
-|----------------------|----------|----------------------------|
-| `localhost:8080`     | HTTPS    | `nginx:8443` (TLS)         |
+| Host address         | Protocol | Maps to                    | Purpose                                      |
+|----------------------|----------|----------------------------|----------------------------------------------|
+| `localhost:8080`     | HTTP     | `nginx:8080`               | Application entry point                      |
+| `localhost:8180`     | HTTP     | `keycloak:8080`            | Keycloak login UI (browser OIDC redirects)   |
 
-All Keycloak OIDC redirect URIs use `https://localhost:8080/...` to match
-the host-visible port. Internal container-to-container traffic uses plain HTTP
-over the Docker bridge network.
+Keycloak is configured with `KC_HOSTNAME=localhost:8180` so that OIDC
+authorization endpoints embedded in the discovery document reference
+`localhost:8180` — a URL the browser can reach. Container-to-container
+token and JWK requests use `keycloak:8080` directly (backchannel). TLS is
+opt-in; add a reverse proxy in front of port 8080 for production use.

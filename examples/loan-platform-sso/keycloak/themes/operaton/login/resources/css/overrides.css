@@ -1,0 +1,12 @@
+:root {
+  --accent: #1b5c9e;
+  --dark: #2c2c2c;
+  --bg: #f5f5f5;
+}
+.login-pf body { background: var(--bg); color: var(--dark); }
+#kc-header-wrapper { color: var(--accent); }
+.btn-primary {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+a { color: var(--accent); }

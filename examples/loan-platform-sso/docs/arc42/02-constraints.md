@@ -19,7 +19,7 @@
 
 | ID | Constraint | Rationale |
 |---|---|---|
-| OC-01 | **Dev/demo use case only** — credentials (`admin/admin`, `alice/alice`, etc.) are intentionally weak and documented. | The project is an example, not a production deployment. Production hardening (secrets management, external TLS, etc.) is out of scope. |
-| OC-02 | **Throwaway self-signed TLS** — `nginx/gen-cert.sh` generates a self-signed certificate for `localhost`. | Avoids a dependency on a CA or external DNS. Browsers will show a certificate warning that users must accept manually. |
+| OC-01 | **Dev/demo use case only** — credentials (`admin/admin`, `alice/alice`, etc.) are intentionally weak and documented. | The project is an example, not a production deployment. Production hardening (secrets management, TLS, etc.) is out of scope. |
+| OC-02 | **HTTP by default, TLS opt-in** — nginx listens on plain HTTP port 8080; `nginx/gen-cert.sh` generates a self-signed certificate for those who want TLS, but it is not mounted by default. | Reduces setup friction for local development. Add a reverse proxy or nginx SSL block for TLS. |
 | OC-03 | **Operaton namespace only** — BPMN/DMN extension elements use `http://operaton.org/schema/1.0/bpmn`; Maven coordinates use `org.operaton.*`. | Repository standard (see `AGENTS.md`, rule 3). |
 | OC-04 | **No shared parent module** — the project is self-contained; it does not import shared code from other examples. | Repository standard (see `docs/EXAMPLE_STANDARDS.md §1`). |

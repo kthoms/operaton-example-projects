@@ -14,11 +14,11 @@ create create realms -s realm=operaton -s enabled=true -s loginTheme=operaton
 # --- Clients ---
 create create clients -r operaton -s clientId=oauth2-proxy -s enabled=true \
   -s publicClient=false -s standardFlowEnabled=true -s secret=oauth2-proxy-secret \
-  -s 'redirectUris=["https://localhost:8080/oauth2/callback"]' -s 'webOrigins=["+"]'
+  -s 'redirectUris=["http://localhost:8080/oauth2/callback"]' -s 'webOrigins=["+"]'
 
 create create clients -r operaton -s clientId=flowset-control -s enabled=true \
   -s publicClient=false -s standardFlowEnabled=true -s secret=flowset-control-secret \
-  -s 'redirectUris=["https://localhost:8080/control/*"]' -s 'webOrigins=["+"]'
+  -s 'redirectUris=["http://localhost:8080/control/*"]' -s 'webOrigins=["+"]'
 
 create create clients -r operaton -s clientId=operaton-identity-service -s enabled=true \
   -s publicClient=false -s serviceAccountsEnabled=true -s standardFlowEnabled=false \

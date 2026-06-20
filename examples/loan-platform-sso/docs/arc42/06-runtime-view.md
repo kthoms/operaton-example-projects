@@ -11,9 +11,9 @@ A user who is not yet authenticated and navigates to any protected path goes
 through the following sequence:
 
 ```
-Browser                nginx (SSL 8443)    oauth2-proxy        Keycloak
+Browser                nginx (HTTP 8080)   oauth2-proxy        Keycloak
   |                         |                   |                  |
-  |-- GET / (HTTPS) ------->|                   |                  |
+  |-- GET / (HTTP) -------->|                   |                  |
   |                         |-- GET /oauth2/auth ->|                |
   |                         |<-- 401 Unauthorized -|                |
   |                         |   (error_page 401 = /oauth2/sign_in) |
@@ -26,15 +26,15 @@ Browser                nginx (SSL 8443)    oauth2-proxy        Keycloak
   |-- GET /oauth2/start ---->|                  |                  |
   |                         |-- GET /oauth2/start ->|              |
   |                         |<-- 302 to Keycloak /auth ---        |
-  |<-- 302 Location: http://keycloak:8080/... --|                  |
+  |<-- 302 Location: http://localhost:8180/... -|                  |
   |                         |                   |                  |
-  |-- GET /realms/operaton/protocol/openid-connect/auth ---------->|
+  |-- GET localhost:8180/realms/operaton/protocol/openid-connect/auth ->|
   |<-- 200 Keycloak Login Form -----------------------------------------|
   |                         |                   |                  |
   | [user enters credentials]                   |                  |
   |                         |                   |                  |
   |-- POST credentials ------------------------------------------------->|
-  |<-- 302 to https://localhost:8080/oauth2/callback?code=... ----------|
+  |<-- 302 to http://localhost:8080/oauth2/callback?code=... -----------|
   |                         |                   |                  |
   |-- GET /oauth2/callback?code=... -------->|  |                  |
   |                         |-- GET /oauth2/callback?code=... ->|  |
@@ -53,8 +53,8 @@ Browser                nginx (SSL 8443)    oauth2-proxy        Keycloak
 
 **Key implementation details:**
 
-- nginx listens on port 8443 (TLS) with a self-signed certificate.
-  The Docker Compose host mapping is `8080:8443`, so external clients use port 8080.
+- nginx listens on port 8080 (HTTP). The Docker Compose host mapping is `8080:8080`.
+  TLS is opt-in — see `02-constraints.md` OC-02.
 - All app routes (`/`, `/control/`, `/tasklist/`, `/engine-rest/`) use
   `auth_request /oauth2/auth` which internally calls oauth2-proxy on port 4180.
 - `error_page 401 = /oauth2/sign_in` causes nginx to serve the oauth2-proxy

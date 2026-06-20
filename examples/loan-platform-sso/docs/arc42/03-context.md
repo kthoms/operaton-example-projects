@@ -10,11 +10,11 @@
  │  │  Browser (alice/eve/ │       │  LoanWorker (service account:    │  │
  │  │  admin)              │       │  worker/worker)                  │  │
  │  └──────────┬───────────┘       └────────────────┬─────────────────┘  │
- │             │ HTTPS (8080)                        │ HTTP Basic          │
+ │             │ HTTP (8080)                         │ HTTP Basic          │
  │             ▼                                     ▼                    │
  │  ┌────────────────────┐          ┌──────────────────────────────────┐  │
  │  │  nginx + oauth2-   │          │  Operaton Engine (REST-only)     │  │
- │  │  proxy (TLS, SSO)  │◄────────►│  /engine-rest                    │  │
+ │  │  proxy (SSO)       │◄────────►│  /engine-rest                    │  │
  │  └────────────────────┘          └──────────────────────────────────┘  │
  └────────────────────────────────────────────────────────────────────────┘
                │                              │
@@ -58,22 +58,22 @@ All inter-container traffic flows over Docker's internal bridge network
 (`loan-platform-sso_default`). The network boundary at the edge is nginx,
 which:
 
-1. Terminates TLS using the self-signed certificate from `nginx/certs/`.
-2. Performs an `auth_request` to oauth2-proxy for every protected route.
-3. Proxies authenticated requests to the appropriate upstream container.
+1. Performs an `auth_request` to oauth2-proxy for every protected route.
+2. Proxies authenticated requests to the appropriate upstream container.
 
-No container other than nginx exposes a port on the Docker host.
+Nginx exposes port 8080 (HTTP) on the Docker host. Keycloak additionally
+exposes port 8180 (HTTP) for browser OIDC authorization redirects. TLS is opt-in.
 
 ### Communication Channels
 
 | Channel | Protocol | Auth |
 |---|---|---|
-| Browser → nginx | HTTPS (port 8080 → 8443) | TLS; session cookie validated by oauth2-proxy |
+| Browser → nginx | HTTP (port 8080) | Session cookie validated by oauth2-proxy |
 | nginx → oauth2-proxy | HTTP (internal, port 4180) | `auth_request` sub-request; cookie forwarded |
 | nginx → Flowset Control | HTTP (internal, port 8081) | Bearer token injected by oauth2-proxy via `X-Auth-Request-Access-Token` |
 | nginx → Flowset Tasklist | HTTP (internal, port 3000) | Bearer token (same mechanism) |
 | nginx → Operaton engine | HTTP (internal, port 8080) | Bearer token forwarded to `/engine-rest` |
-| Browser → Keycloak (login) | HTTP (internal, port 8080 via nginx proxy) | Username + password (ROPC or Authorization Code with PKCE) |
+| Browser → Keycloak (login) | HTTP (host port 8180 → container 8080) | Authorization Code with PKCE |
 | LoanWorker → engine | HTTP (internal, port 8080) | HTTP Basic (`worker:worker`) |
 | oauth2-proxy → Keycloak | HTTP (internal, port 8080) | PKCE Authorization Code flow; client secret |
 | Flowset Control → Keycloak | HTTP (internal, port 8080) | OIDC (client: `flowset-control`) |
