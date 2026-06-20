@@ -31,6 +31,10 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
     testImplementation("io.rest-assured:rest-assured:5.5.0")
+    // SLF4J binding so Testcontainers logs Docker detection info during IT
+    testRuntimeOnly("org.slf4j:slf4j-simple:2.0.17")
+    // Gradle 9+ requires junit-platform-launcher on the test runtime classpath
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 application {

@@ -26,18 +26,40 @@ public class LoanWorker {
                 env("WORKER_CLIENT_ID", "worker"),
                 env("WORKER_CLIENT_SECRET", "worker-secret"));
             auth = ctx -> ctx.addHeader("Authorization", "Bearer " + tokens.accessToken());
+            ExternalTaskClient client = ExternalTaskClient.create()
+                .baseUrl(baseUrl)
+                .addInterceptor(auth)
+                .asyncResponseTimeout(10_000)
+                .build();
+            subscribeAll(client);
+            System.out.println("LoanWorker started (authMode=" + authMode + ", baseUrl=" + baseUrl + ")");
         } else { // BASIC_IDP
-            String basic = Base64.getEncoder()
-                .encodeToString((user + ":" + password).getBytes());
-            auth = ctx -> ctx.addHeader("Authorization", "Basic " + basic);
+            start(baseUrl, user + ":" + password);
+            System.out.println("LoanWorker started (authMode=" + authMode + ", baseUrl=" + baseUrl + ")");
         }
+    }
 
+    /**
+     * Starts both subscriptions against {@code baseUrl} with Basic auth.
+     * Used by {@code main()} and integration tests.
+     *
+     * @param baseUrl       the engine-rest base URL (e.g. {@code http://localhost:8080/engine-rest})
+     * @param basicUserPass credentials in {@code user:password} form
+     * @return the started {@link ExternalTaskClient}
+     */
+    public static ExternalTaskClient start(String baseUrl, String basicUserPass) {
+        String basic = Base64.getEncoder().encodeToString(basicUserPass.getBytes());
+        ClientRequestInterceptor auth = ctx -> ctx.addHeader("Authorization", "Basic " + basic);
         ExternalTaskClient client = ExternalTaskClient.create()
             .baseUrl(baseUrl)
             .addInterceptor(auth)
             .asyncResponseTimeout(10_000)
             .build();
+        subscribeAll(client);
+        return client;
+    }
 
+    private static void subscribeAll(ExternalTaskClient client) {
         client.subscribe("credit-scoring")
             .lockDuration(10_000)
             .handler((task, service) -> {
@@ -59,8 +81,6 @@ public class LoanWorker {
                 service.complete(task, Map.of("loanDecision", decision), Map.of());
             })
             .open();
-
-        System.out.println("LoanWorker started (authMode=" + authMode + ", baseUrl=" + baseUrl + ")");
     }
 
     private static String env(String key, String fallback) {
