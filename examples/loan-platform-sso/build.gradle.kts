@@ -18,6 +18,10 @@ val testcontainersVersion = "1.21.3"
 dependencies {
     implementation("org.operaton.bpm:operaton-external-task-client:$operatonVersion")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
+    // JAXB was removed from JDK 9+; the Operaton external-task-client's XML
+    // data-format provider requires it at runtime on Java 11+.
+    implementation("jakarta.xml.bind:jakarta.xml.bind-api:4.0.0")
+    runtimeOnly("com.sun.xml.bind:jaxb-impl:4.0.0")
 
     testImplementation(platform("org.testcontainers:testcontainers-bom:$testcontainersVersion"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
