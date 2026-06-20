@@ -103,13 +103,12 @@ services:
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENTID: flowset-control
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENTSECRET: flowset-control-secret
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_SCOPE: "openid, profile, roles"
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUERURI: http://keycloak:8080/realms/operaton
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATIONURI: http://localhost:8180/realms/operaton/protocol/openid-connect/auth
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKENURI: http://keycloak:8080/realms/operaton/protocol/openid-connect/token
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USERINFOURI: http://keycloak:8080/realms/operaton/protocol/openid-connect/userinfo
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWKSETURI: http://keycloak:8080/realms/operaton/protocol/openid-connect/certs
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USERNAMEATTRIBUTE: preferred_username
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI: http://keycloak:8080/realms/operaton
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI: http://keycloak:8080/realms/operaton/protocol/openid-connect/certs
     depends_on:
       postgres-flowset: { condition: service_healthy }
       operaton: { condition: service_healthy }

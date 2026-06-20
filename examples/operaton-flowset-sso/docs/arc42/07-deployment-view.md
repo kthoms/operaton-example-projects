@@ -185,10 +185,13 @@ and run natively.
 | `localhost:8080`     | HTTP     | `nginx:8080`               | Application entry point                      |
 | `localhost:8180`     | HTTP     | `keycloak:8080`            | Keycloak login UI (browser OIDC redirects)   |
 
-Keycloak runs without a fixed `KC_HOSTNAME`, using dynamic hostname mode.
-oauth2-proxy is configured with `skip_oidc_discovery=true` and an explicit
-`login_url=http://localhost:8180/...` so the browser is redirected to the
-host-accessible port. Flowset Control is configured with an explicit
-`authorization-uri: localhost:8180` override while using `keycloak:8080`
-for all backchannel token and JWK requests. TLS is opt-in; add a reverse
-proxy in front of port 8080 for production use.
+Keycloak runs without a fixed `KC_HOSTNAME` (dynamic hostname mode). The
+browser always reaches Keycloak at `localhost:8180`, so Keycloak stamps all
+JWTs with `iss=http://localhost:8180/realms/operaton`. oauth2-proxy is
+configured with `skip_oidc_discovery=true` and `oidc_issuer_url=localhost:8180`
+(used only as a string to compare against the JWT `iss` claim — no connection
+is made). Flowset Control uses explicit individual endpoint URIs instead of
+`issuer-uri`; this bypasses Spring Boot's issuer validation and lets the
+app accept tokens whose `iss=localhost:8180` without needing to reach that
+host from inside the container. TLS is opt-in; add a reverse proxy in front
+of port 8080 for production use.
