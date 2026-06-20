@@ -8,13 +8,14 @@ repository:
     url: "https://github.com/kthoms"
 
 examples:
-  - id: loan-platform-sso
-    title: Loan Platform SSO
-    path: examples/loan-platform-sso
+  - id: operaton-flowset-sso
+    title: Operaton + Flowset with Keycloak SSO
+    path: examples/operaton-flowset-sso
     description: >
-      Complete secured BPM platform: Operaton engine (REST-only) behind Keycloak SSO,
-      operated through Flowset Control and Tasklist, with a plain-Java external-task
-      worker handling service work and nginx/oauth2-proxy providing single sign-on.
+      Demonstrates the Operaton + Flowset + Keycloak SSO platform stack: REST-only
+      Operaton engine behind a nginx/oauth2-proxy SSO gateway, Flowset Control and
+      Tasklist for task management, and a plain-Java external-task worker. A
+      loan-application process serves as the example workload.
     tags: [keycloak, sso, flowset, external-task, nginx, docker-compose]
     screenshots:
-      - examples/loan-platform-sso/engine/resources/loan-application.png
+      - examples/operaton-flowset-sso/engine/resources/loan-application.png
