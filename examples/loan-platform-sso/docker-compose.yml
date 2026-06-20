@@ -1,0 +1,139 @@
+name: loan-platform-sso
+
+services:
+  postgres-operaton:
+    image: postgres:16-alpine
+    environment: { POSTGRES_DB: operaton, POSTGRES_USER: operaton, POSTGRES_PASSWORD: operaton }
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U operaton -d operaton"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres-keycloak:
+    image: postgres:16-alpine
+    environment: { POSTGRES_DB: keycloak, POSTGRES_USER: keycloak, POSTGRES_PASSWORD: keycloak }
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres-flowset:
+    image: postgres:16-alpine
+    environment: { POSTGRES_DB: flowset-control, POSTGRES_USER: flowset, POSTGRES_PASSWORD: flowset }
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowset -d flowset-control"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6.3
+    command: ["start-dev", "--http-port=8080"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+    volumes:
+      - ./keycloak/themes/operaton:/opt/keycloak/themes/operaton:ro
+    depends_on:
+      postgres-keycloak: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /realms/master HTTP/1.0\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  keycloak-init:
+    image: quay.io/keycloak/keycloak:26.6.3
+    entrypoint: ["bash", "/seed/seed-realm.sh"]
+    environment:
+      KC_SERVER: http://keycloak:8080
+      KC_ADMIN: admin
+      KC_ADMIN_PASSWORD: admin
+    volumes:
+      - ./keycloak/seed-realm.sh:/seed/seed-realm.sh:ro
+    depends_on:
+      keycloak: { condition: service_healthy }
+    restart: "no"
+
+  operaton:
+    build: ./engine
+    image: loan-platform-sso-engine:local
+    depends_on:
+      postgres-operaton: { condition: service_healthy }
+      keycloak-init: { condition: service_completed_successfully }
+    volumes:
+      - ./engine/resources:/operaton/configuration/resources:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/engine-rest/engine || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  worker:
+    build: { context: ., dockerfile: worker/Dockerfile }
+    image: loan-platform-sso-worker:local
+    environment:
+      ENGINE_REST_URL: http://operaton:8080/engine-rest
+      ENGINE_AUTH_MODE: BASIC_IDP
+      ENGINE_USER: worker
+      ENGINE_PASSWORD: worker
+    depends_on:
+      operaton: { condition: service_healthy }
+
+  flowset-control:
+    image: flowset/flowset-control-community:latest
+    environment:
+      MAIN_DATASOURCE_URL: jdbc:postgresql://postgres-flowset:5432/flowset-control
+      MAIN_DATASOURCE_USERNAME: flowset
+      MAIN_DATASOURCE_PASSWORD: flowset
+      SERVER_PORT: "8081"
+      FLOWSET_CONTROL_SECURITY_LOGINMODE: oidc
+      JMIX_OIDC_USEDEFAULTCONFIGURATION: "true"
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENTID: flowset-control
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENTSECRET: flowset-control-secret
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_SCOPE: "openid, profile, roles"
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUERURI: http://keycloak:8080/realms/operaton
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USERNAMEATTRIBUTE: preferred_username
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI: http://keycloak:8080/realms/operaton
+    depends_on:
+      postgres-flowset: { condition: service_healthy }
+      operaton: { condition: service_healthy }
+
+  flowset-tasklist:
+    image: flowset/flowset-tasklist-react-community:latest
+    environment:
+      VITE_BPM_ENGINE_API_URL: /engine-rest
+      VITE_BPM_ENGINE_TYPE: OPERATON
+      VITE_APP_LOCALE: en
+    depends_on:
+      operaton: { condition: service_healthy }
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.3
+    command: ["--config=/etc/oauth2-proxy/oauth2-proxy.cfg"]
+    volumes:
+      - ./oauth2-proxy/oauth2-proxy.cfg:/etc/oauth2-proxy/oauth2-proxy.cfg:ro
+    depends_on:
+      keycloak: { condition: service_healthy }
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:8443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - oauth2-proxy
+      - operaton
+      - flowset-control
+      - flowset-tasklist
