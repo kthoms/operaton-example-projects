@@ -10,7 +10,7 @@ Flowset Control and Tasklist, all behind one nginx/oauth2-proxy TLS gateway.
 - Keycloak as the identity provider via the Operaton Keycloak plugin (`operaton-keycloak-all`)
 - Single sign-on across the welcome page and Flowset apps with nginx + oauth2-proxy
 - External-task service work done by a standalone, non-Spring Java worker
-- A custom itemis-themed welcome page and Keycloak login skin
+- A themed welcome page and Keycloak login skin
 - Redoc-rendered REST API docs at `/engine-rest`
 
 ## Architecture overview
@@ -45,8 +45,10 @@ The `loan-application.bpmn` process:
 2. **Score credit** — external task topic `credit-scoring` (worker derives `creditScore`)
 3. **Risk assessment** — DMN decision table `risk-assessment.dmn` (evaluates `creditScore` → `riskLevel`)
 4. **Gateway** — low/high risk routes auto-complete; medium risk routes to a user task
-5. **Underwriter Review** — user task (candidate group: `underwriter`)
-6. **Send notification** — external task topic `notification` (worker sets `loanDecision`)
+5. **Underwriter Review** — user task (candidate group: `underwriter`); medium-risk path only
+6. **Low/High paths:** worker handles topic `notification`, sets `loanDecision=APPROVED` or
+   `REJECTED`; **Medium path:** process waits at the Underwriter Review user task — no
+   notification external task on this path.
 7. End events: `EndEvent_Approved` or `EndEvent_Rejected`
 
 ## Prerequisites
@@ -96,8 +98,9 @@ Startup takes approximately 60–90 seconds on first run (Keycloak initialisatio
    `loanDecision = APPROVED`. The process completes automatically.
 5. For a **medium-risk** path: inject `creditScore = 650` as a start variable.
    The process reaches the **Underwriter Review** user task (group `underwriter`).
-   Log out, log in as `eve`, open Tasklist, claim the task, and complete it to
-   send the notification.
+   Log out, log in as `eve`, open Tasklist, claim the task, and complete it.
+   The process ends directly — `loanDecision` is set by an execution listener on the
+   outgoing sequence flow; there is no separate notification external task on this path.
 6. For a **high-risk** path: `loanAmount > 500000` or inject `creditScore = 500`.
    The process routes directly to `REJECTED` without a user task.
 7. **Monitor** all instances in **Control** at https://localhost:8080/control/.

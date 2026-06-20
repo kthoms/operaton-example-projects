@@ -3,6 +3,7 @@ package org.operaton.examples.loanplatformsso;
 import org.operaton.bpm.client.ExternalTaskClient;
 import org.operaton.bpm.client.interceptor.ClientRequestInterceptor;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 
@@ -48,7 +49,7 @@ public class LoanWorker {
      * @return the started {@link ExternalTaskClient}
      */
     public static ExternalTaskClient start(String baseUrl, String basicUserPass) {
-        String basic = Base64.getEncoder().encodeToString(basicUserPass.getBytes());
+        String basic = Base64.getEncoder().encodeToString(basicUserPass.getBytes(StandardCharsets.UTF_8));
         ClientRequestInterceptor auth = ctx -> ctx.addHeader("Authorization", "Basic " + basic);
         ExternalTaskClient client = ExternalTaskClient.create()
             .baseUrl(baseUrl)
