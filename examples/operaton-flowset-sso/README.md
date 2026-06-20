@@ -16,7 +16,7 @@ loan-application process serves as the example workload.
 
 ## Architecture overview
 
-The stack runs entirely in Docker Compose as 11 containers on a single bridge network.
+The stack runs entirely in Docker Compose as 9 containers on a single bridge network.
 A single external port — **8080** on the host — maps to nginx's HTTP listener.
 All browser traffic passes through nginx → oauth2-proxy (OIDC session check)
 before reaching any application service. Keycloak's login UI is directly
@@ -33,7 +33,7 @@ Container roles:
 | Process engine | `operaton` (REST-only, Keycloak plugin) |
 | Service worker | `worker` (external-task, plain Java) |
 | Task management | `flowset-control`, `flowset-tasklist` |
-| Databases | `postgres-operaton`, `postgres-keycloak`, `postgres-flowset` |
+| Database | `postgres` (shared; schemas: `operaton`, `keycloak`, `flowset`) |
 
 The engine uses `ENGINE_AUTH_MODE=BASIC_IDP` (credentials validated by
 `KeycloakIdentityProviderPlugin` against Keycloak ROPC). Browser-facing SSO is

@@ -14,6 +14,10 @@ uses Docker's internal DNS resolver (`127.0.0.11`). Two host ports are exposed:
 Keycloak (required so browsers can follow OIDC authorization redirects). TLS is
 opt-in — plain HTTP is the default.
 
+A single `postgres` container hosts three schemas (`operaton`, `keycloak`,
+`flowset`) each with its own dedicated user. The init script in
+`postgres/init.sql` creates the schemas and users at first start.
+
 ```
 Docker Host (macOS / Linux)
 │
@@ -52,7 +56,7 @@ Docker Host (macOS / Linux)
 │  │  │  - Host port mapping: 8180 → 8080 (browser OIDC login)  │ │
 │  │  │  - Mode: start-dev                                        │ │
 │  │
-│  │  │  - DB: postgres-keycloak:5432/keycloak                   │ │
+│  │  │  - DB: postgres:5432/platform (schema: keycloak)          │ │
 │  │  │  - Theme: /opt/keycloak/themes/operaton (custom)         │ │
 │  │  │  - Realm: operaton (seeded by keycloak-init)             │ │
 │  │  │  - Clients: oauth2-proxy, flowset-control,               │ │
@@ -76,7 +80,7 @@ Docker Host (macOS / Linux)
 │  │  │  - Mode: --rest (no Cockpit/Tasklist WARs)               │ │
 │  │  │  - Plugin: operaton-keycloak-all-2.1.0.jar               │ │
 │  │  │  - Auth: BASIC_IDP via KeycloakIdentityProviderPlugin    │ │
-│  │  │  - DB: postgres-operaton:5432/operaton                   │ │
+│  │  │  - DB: postgres:5432/platform (schema: operaton)          │ │
 │  │  │  - Deploys: loan-application.bpmn, risk-assessment.dmn  │ │
 │  │  │  - Depends on: postgres-operaton (healthy) +             │ │
 │  │  │                keycloak-init (completed successfully)     │ │
@@ -99,7 +103,7 @@ Docker Host (macOS / Linux)
 │  │  │  - Listens: 8081/tcp (HTTP, internal)                    │ │
 │  │  │  - Auth: OIDC (client: flowset-control)                  │ │
 │  │  │  - Exposed at: http://localhost:8080/control/            │ │
-│  │  │  - DB: postgres-flowset:5432/flowset-control             │ │
+│  │  │  - DB: postgres:5432/platform (schema: flowset)           │ │
 │  │  └───────────────────────────────────────────────────────────┘ │
 │  │                                                                 │
 │  │  ┌───────────────────────────────────────────────────────────┐ │
@@ -112,13 +116,12 @@ Docker Host (macOS / Linux)
 │  │  └───────────────────────────────────────────────────────────┘ │
 │  │                                                                 │
 │  │  ┌──────────────────────────────────────────────────────────┐  │
-│  │  │  DATABASES                                                │  │
-│  │  │  postgres:16-alpine  (postgres-operaton)                  │  │
-│  │  │    DB: operaton / user: operaton                          │  │
-│  │  │  postgres:16-alpine  (postgres-keycloak)                  │  │
-│  │  │    DB: keycloak / user: keycloak                          │  │
-│  │  │  postgres:16-alpine  (postgres-flowset)                   │  │
-│  │  │    DB: flowset-control / user: flowset                    │  │
+│  │  │  DATABASE                                                 │  │
+│  │  │  postgres:16-alpine  (postgres)                           │  │
+│  │  │    DB: platform                                           │  │
+│  │  │    schema: operaton / user: operaton                      │  │
+│  │  │    schema: keycloak  / user: keycloak                     │  │
+│  │  │    schema: flowset   / user: flowset                      │  │
 │  │  └──────────────────────────────────────────────────────────┘  │
 │  └─────────────────────────────────────────────────────────────────┘
 ```
@@ -137,33 +140,27 @@ Docker Host (macOS / Linux)
 | `worker`             | `operaton-flowset-sso-worker:local`            | —               | —         | External task worker          |
 | `flowset-control`    | `flowset/flowset-control-community:latest`   | 8081/tcp        | —         | Task management UI (amd64)    |
 | `flowset-tasklist`   | `flowset/flowset-tasklist-react-community:latest` | 3000/tcp   | —         | Tasklist SPA (amd64)          |
-| `postgres-operaton`  | `postgres:16-alpine`                         | 5432/tcp        | —         | Engine database               |
-| `postgres-keycloak`  | `postgres:16-alpine`                         | 5432/tcp        | —         | Keycloak database             |
-| `postgres-flowset`   | `postgres:16-alpine`                         | 5432/tcp        | —         | Flowset database              |
+| `postgres`           | `postgres:16-alpine`                         | 5432/tcp        | —         | Shared database (3 schemas)   |
 
-Total: **11 containers** (3 ephemeral/init: keycloak-init exits 0; worker and all others stay running).
+Total: **9 containers** (1 ephemeral/init: keycloak-init exits 0; worker and all others stay running).
 
 ---
 
 ## Startup Order (dependency chain)
 
 ```
-postgres-keycloak (healthy)
-      └─► keycloak (healthy)
-              ├─► keycloak-init (completed-successfully)
-              │       ├─► oauth2-proxy
-              │       └─► operaton (healthy)
-              │               ├─► worker
-              │               ├─► flowset-control
-              │               └─► flowset-tasklist
-              │                       └─► nginx
-              └─► oauth2-proxy (also waits for keycloak-init)
-
-postgres-operaton (healthy)
-      └─► operaton (healthy)
-
-postgres-flowset (healthy)
+postgres (healthy)
+      ├─► keycloak (healthy)
+      │       ├─► keycloak-init (completed-successfully)
+      │       │       └─► oauth2-proxy
+      │       └─► oauth2-proxy (also waits for keycloak-init)
+      ├─► operaton (healthy)
+      │       ├─► worker
+      │       ├─► flowset-control
+      │       └─► flowset-tasklist
       └─► flowset-control
+
+nginx (waits for oauth2-proxy, operaton, flowset-control, flowset-tasklist)
 ```
 
 ---
