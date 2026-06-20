@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Loan Platform</title>
+  <style>
+    :root { --itemis-red:#e2001a; --itemis-dark:#1d1d1b; --itemis-bg:#f7f7f7; }
+    body { margin:0; font-family: system-ui, sans-serif; background:var(--itemis-bg); color:var(--itemis-dark); }
+    header { background:var(--itemis-red); color:#fff; padding:1.5rem 2rem; }
+    h1 { margin:0; font-size:1.4rem; }
+    main { display:flex; gap:1.5rem; padding:2.5rem 2rem; flex-wrap:wrap; }
+    a.tile { display:block; width:260px; padding:1.75rem; background:#fff; border-radius:10px;
+             text-decoration:none; color:var(--itemis-dark); box-shadow:0 2px 8px rgba(0,0,0,.08);
+             border-top:4px solid var(--itemis-red); }
+    a.tile:hover { box-shadow:0 4px 16px rgba(0,0,0,.15); }
+    .tile h2 { margin:.2rem 0 .5rem; color:var(--itemis-red); }
+    .tile p { margin:0; font-size:.9rem; line-height:1.4; }
+  </style>
+</head>
+<body>
+  <header><h1>Loan Platform — powered by Operaton</h1></header>
+  <main>
+    <a class="tile" href="/control/">
+      <h2>Control</h2>
+      <p>Operate and monitor running loan processes (Flowset Control).</p>
+    </a>
+    <a class="tile" href="/tasklist/">
+      <h2>Tasklist</h2>
+      <p>Start applications and complete underwriter reviews (Flowset Tasklist).</p>
+    </a>
+  </main>
+</body>
+</html>
