@@ -8,3 +8,13 @@ repository:
     url: "https://github.com/kthoms"
 
 examples:
+  - id: loan-platform-sso
+    title: Loan Platform SSO
+    path: examples/loan-platform-sso
+    description: >
+      Complete secured BPM platform: Operaton engine (REST-only) behind Keycloak SSO,
+      operated through Flowset Control and Tasklist, with a plain-Java external-task
+      worker handling service work and nginx/oauth2-proxy providing single sign-on.
+    tags: [keycloak, sso, flowset, external-task, nginx, docker-compose]
+    screenshots:
+      - examples/loan-platform-sso/engine/resources/loan-application.png
