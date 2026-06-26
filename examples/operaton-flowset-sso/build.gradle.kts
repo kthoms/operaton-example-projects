@@ -13,7 +13,7 @@ java {
 repositories { mavenCentral() }
 
 val operatonVersion = "2.1.1"
-val testcontainersVersion = "1.21.3"
+val testcontainersVersion = "1.21.4"
 
 dependencies {
     implementation("org.operaton.bpm:operaton-external-task-client:$operatonVersion")
